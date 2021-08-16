@@ -1,0 +1,133 @@
+---
+title: 'Assignment #1 - Star Digital'
+subtitle: "Daniel Smetana, Joseph Boykin, Trent Hannack"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{R, message = FALSE, warning = FALSE, echo = FALSE, results = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(pwr)
+library(readr)
+library(ggplot2)
+MyData <- read.csv("starDigital.csv")
+
+```
+
+
+**Executive Summary**
+
+Star Digital has historically had a sizeable advertising budget of over $100MM annually. In the past, the company has focused primarily on spending this budget on television ads, but in recent years has shifted towards increasing the spend on digital ads to coincide with the ever expanding online presence of most consumers. However, many of the measurement systems implemented in the past have not been effective at capturing the ROI on these comparatively new digital advertising investments, and in turn an information gap about the true effectiveness of these ads exists.
+
+As a result, Star Digital designed a digital advertising experiment to understand the impact of digital spending and whether it was likely to positively impact the probability of purchase with regards to subscription packages. The experiment itself followed two randomized groups, namely “test” and “control”, across a two-month time period and tracked both the number of ads seen across six different websites and furthermore the eventual purchases of the consumers in each group. The key difference between the two groups within the experiment was that those individuals in the test group were shown Star Digital ads when the ad producing algorithm called for it, whereas the control group were instead shown unrelated non-profit ads in place of the would be Star Digital ad. For the purpose of analysis, ‘sites 1 through 5” were grouped together while “site 6” was analyzed separately – a structure that aligns with the platform packages available to advertise on. 
+
+The key objective of the experiment was to answer these fundamental questions:
+
+* Is online advertising effective for Star Digital?
+* Does increasing the frequency of advertising increase the probability of purchase?
+* Which sites should Star Digital advertise on?
+
+With regards to the first two objectives, the analysis within this report found evidence that not only is digital advertising effective for Star Digital, but also that increasing the frequency of advertising does indeed increase the probability of purchase for a customer. Important to note however, both effects were found to be relatively small and management should be cautious about relying too much on the results given that the study was underpowered to detect the level of impact that was present. In order to remedy this concern, more data would need to be analyzed. As for to the final objective, this report found evidence that there is a significant benefit in advertising on “sites 1 through 5” comparative to “site 6”, with nearly 175% more value on a per ad basis, and in turn would strongly recommend advertising primarily through this avenue given the prospect of allocating funds between the two options.
+
+\newpage
+
+**Introduction**
+
+In order to explore the relationship Star Digital advertisements have on subscription package sales, a controlled experiment was created. This experiment was comprised of two randomly assigned groups of customers, “test” and “control”, and all factors aside from the advertisements seen were not altered in any way. The test group, which represents 90% of the entire study population, were shown Star Digital ads across six websites, whereas the control group, representing 10% of the study, were shown non-profit organization ads in place of the Star Digital ads on the same sites. Crucial to the experiment’s success is the effective randomization of the two groups, as this randomization is what reduces the risk of omitted variables compromising the results found within the analysis. To check the randomization the below analysis was run on the sample of 25,303 customers provided. 
+
+``` {R, echo=FALSE}
+t.test(sum1to5~test, data=MyData)
+t.test(imp_6~test, data=MyData)
+MyData$aggregateSum <- MyData$sum1to5 + MyData$imp_6
+t.test(aggregateSum~test, data=MyData)
+```
+
+In looking at the output above, it can be seen that across “sites 1 through 5”, “site 6”, and all sites combined (“aggregateSum”), there were an equivalent number of ads seen by both the test and control groups, with an average of 8 ads seen per customer across all sites. This result affirms that the randomization of customers was indeed effective, increasing the likelihood of a true casual relationship being found within the analysis to come. Further strengthening the validity of experiment structure, there is no evidence that the sample used misrepresents the actual population in any way, nor is there reason to have concern about the software used to track the ads seen and purchases made. In turn, this experiment can be deemed well structured and offers the opportunity to potentially find causal relationships between advertisements and package purchases. This is important because of main concern of this report is to evidence if advertisements are effective in themselves, and furthermore if there is a frequency effect present between number of ads seen and purchase likelihood, and given the experiment created and data provided there should be a reasonable path towards doing so. 
+
+Outside of the general structure, additionally important to a successful experiment is the “power” of the data, which outlines the change that can be reasonably seen given decided upon error acceptance rates and sample size.  To analyze the power of the data provided, a "power test” was run, with the results of this test being found below. This test was structured to have 90% confidence in finding a causal relationship when it should, and 80% confidence in avoiding finding a relationship when no relationship exists in reality. Both of these thresholds are industry standard, but if more confidence were desired it is important to note that the change that could be seen would be less than that of the below. 
+
+```{R echo=FALSE}
+pwr.t2n.test(d=NULL, n1 = 22647, n2 = 2656, power=0.8, sig.level = 0.10, alternative = "two.sided")
+```
+
+Based upon the output above, the change rate that can be reasonably found within the data is 5.1%. In turn, any change rate less than 5.1% (i.e. 1%) would result in some concern as the experiment is “underpowered” to confidently prove a rate that small. As will be seen within the analysis to come, all of the relationships found between advertisements and purchase rates have change rates well below the 5.1% threshold, so it is important to note at this stage that there should be some caution in interpreting the results of this report with utmost confidence. The experiment being “underpowered” does not completely comprise the analysis, but prior to making any business decisions off of the findings presented it is important to be conscious of this reality. 
+
+\newpage
+
+**Analysis**
+
+Now that both the experiment structure and goals have been explored, we can turn towards looking at the data itself. Below is a distribution of the ads seen per customer, with the visual zoomed in to remove significant outliers from the data. 
+
+```{R echo=FALSE}
+AdDistribution <- ggplot(MyData, aes(x=aggregateSum)) + geom_histogram(binwidth = 1) + coord_cartesian(xlim = c(0,50)) + labs(title = "Number of Ads Viewed Per Customer", x = "Number of Ads", y = "Number of Customers") + theme_minimal()
+print(AdDistribution)
+```
+
+As can be seen by the chart, the large majority of the customers tracked saw relatively few Star Digital or non-profit ads. Although some outlier customers (cut from the chart to aid the visual) who saw hundreds of ads do exist, most customers saw 10 or fewer ads across the two-month period the study ran. This is important to be conscious of when viewing the analysis within this report, as it gives context to what tangible influence can be had on a person customer basis. For example, it would be unreasonable to project the effect on purchase likelihood of a singular customer seeing 100 ads within a six-month period as the most customers will never see anywhere near that number of ads during such a timeline.  
+
+With a base level comprehension of the data provided having been established, we can now turn towards actually evaluating the effectiveness of online advertisements in converting potential customers to purchasers. In order to assess whether the advertisements resulted in a discernible lift, a linear regression was performed between purchase rate and test status (i.e. test group or control group) to determine whether seeing Star Digital ads positively influenced sales. 
+
+
+``` {R, echo=FALSE}
+ols_treatment <- lm(purchase ~ test, data = MyData)
+summary(ols_treatment)
+```
+
+In analyzing the output of the regression, we see evidence to the fact that Star Digital ads do indeed positively correlate with sales. Specifically, the ‘test’ line above shows that within the experiment there was an approximately 1.9% increase in purchase likelihood due to being in the test group and seeing the Star Digital ads rather than being in the control group and seeing the charity ads. Additionally important, the model is 94% confident in this result based upon the data collected. However, if we recall the results of the power test mentioned previously within this report, it is critical to realize that the effect shown falls substantially below the 5.1% change threshold the data can confidently showcase. That is not to say that a relationship between Star Digital ads and sales does not exist, but rather that there should be some caution in interpreting the results too confidently or literally. To remedy this concern, more data would need to be analyzed. 
+
+Another important question to address is if there is a frequency effect present within the data. That is to say, does seeing more Star Digital ads result in a positive, or negative, change in purchase likelihood? In order to address this question, another linear regression was performed, this time between purchases and the number of ads (aggregated across all sites) seen for those in the test group. 
+
+
+```{R, echo=FALSE}
+MyData$aggregateSum <- MyData$sum1to5 + MyData$imp_6
+MyData$aggregateSum_demean <- MyData$aggregateSum - mean(MyData$aggregateSum)
+ols_moderated_aggregate <- lm(purchase ~ test*aggregateSum_demean, data = MyData)
+summary(ols_moderated_aggregate)
+```
+
+Liken to the results of the first regression, the above linear model finds with a high degree of confidence that there is a positive relationship between seeing additional Star Digital ads and actual customer purchases. The value .0025937 of the “aggregateSum_demean” variable indicates that for every additional Star Digital ad a potential customer sees, there is a .259% increase in purchase likelihood, all else equal. Furthermore, the positive value of the “test: aggregateSum_demean” variable similarly indicates that as the number of ads seen increases for those in the test group, the effect of being in the test group itself is amplified, once more translating into a positive correlation between ads seen and purchase rate within the group. Again these change rates fall well below the rate the power test suggested could be found, and in turn caution should be had, but nonetheless it is constructive to see that the advertisements are having a continual positive impact on purchase rate within the test group. In taking this analysis and applying it to the business itself, this model suggests that there is value in targeting customers with multiple ads, as there is an increased probability of them purchasing the product if they see more ads for it.
+
+Having established that advertising does indeed have some positive impact on sales, it is now important to explore how to most efficiently use the advertising budget based upon the avenues available. Specifically, when considering the prospect of advertising through “sites 1 through 5” or “site 6” it is essential to know which offers the better return on investment. In order to address this, a model which highlights the comparative effect each additional ad has on purchase likelihood across both site packages was created. In order to accurately portray the true effect of the advertisements two new variables were created, “sum1to5_demean” and “imp_6_demean”. These new variables allow the regression to isolate the effect of ads on one site(s), when the number of ads seen on the other site(s) is held at its average within the data – a structure more representative of reality as customers were not restricted in any way with regards to which sites they could visit and in all likelihood could have visited both “sites 1 through 5” and “site 6” during the study, and would continue to do so in the future, as well. Below are the results of the aforementioned analysis, and furthermore a table which highlights the key findings relative to the business concern. 
+
+
+```{R, echo=FALSE}
+MyData$sum1to5_demean <- MyData$sum1to5 - mean(MyData$sum1to5)
+MyData$imp_6_demean <-MyData$imp_6 - mean(MyData$imp_6)
+#combined OLS
+ols_moderated_combined <- lm(purchase ~ test*sum1to5_demean + test*imp_6_demean, data = MyData)
+summary(ols_moderated_combined)
+```
+
+|                   | Per Ad Benefit | Benefit Per Thousand Ads | Probability this result would be observed if there was No Relationship in reality | Cost Per Thousand Ads | Cost/Benefit Ratio                          |
+|:-----------------:|:--------------:|:------------------------:|:---------------------------------------------------------------------------------:|:---------------------:|:---------------------------------------------:|
+| Sites 1 through 5 |     .3078%     |          307.8%          |                                        ~ 0%                                       |          $25          | $.08 per 1% increase in purchase likelihood |
+|       Site 6      |     .0900%     |           90.0%          |                                       32.6%                                       |          $20          | $.22 per 1% increase in purchase likelihood |
+
+In reviewing the results of the output above, it becomes clear that there is a substantial added benefit in advertising on “sites 1 through 5” rather than on “site 6”. Even though the model evidences to varying degrees of confidence some positive influence of advertising via either site package, there is a significantly larger effect shown on a per ad basis for “sites 1 through 5”, so much so that it outweighs the raw cost savings that “site 6” offers. As can be seen in the above table, even when considering the per ad price discount, there is still 175% more value in advertising on “sites 1 through 5”. Furthermore, and not insignificantly, the model has far more confidence in the effect found for “sites 1 through 5” than “site 6”. Again looking to the table above, it can be seen that there is almost 100% confidence that advertisements on “sites 1 through 5” had a tangible influence on purchase rate, whereas there is only about 67.4% confidence that advertisements on “site 6” had an effect.  
+
+**Conclusion**
+
+The core goal of this report was to understand the previously undocumented relationship online Star Digital advertisements have on subscription package purchase rates, based upon the experimental data available. In order to furnish this understanding, numerous linear regressions were run, each of which evidencing a positive advertisement effect to some degree. Not only were the ads in themselves found to be effective, with a 1.9% increase in purchase likelihood for those who saw the ads versus those who did not, but furthermore at an aggregate level the ads were shown to have a continual positive influence on purchase rate for each additional advertisement seen. In translating these findings to the business, it was shown that the current online advertisement model is effective in converting customers, and furthermore that there is value in targeting the same customers with multiple ads in order to increase the likelihood of their purchase. In turn, the overall recommendation of this report would be to continue to grow upon the already successful online advertising platform, refining the model in an attempt to increase the positive correlation that exists today. 
+
+Once confidence was established in the effectiveness of the advertisements, this report then turned towards evaluating the potential sites available to advertise through. In comparing the effect of ads viewed on “sites 1 through 5” (\$.22 per 1% increase in purchase likelihood) to those viewed on “site 6” (\$.08 per 1% increase in purchase likelihood) it is evident that “sites 1 through 5” offer a far stronger return on investment. In any analysis a 175% difference in value is a substantial figure, but within the context of this experiment specifically, given the small base purchase rate and change rates found, this figure is especially telling.  On top of this increased effectiveness on a per ad basis, advertising through “sites 1 through 5” also in theory reaches a far larger number of customers due to the multiple sites that the ads can be seen on, an intrinsic value present within the package that should not be ignored. In considering both of these factors, this report strongly recommends funneling the entirety of the advertising budget available for these two platforms into “sites 1 through 5”, exclusively. 
+
+An important caveat to all of the findings within this report is that there was found to be a substantial lack of data comparative to what is needed to confidently showcase the minuscule change rates seen within the analysis. As to be expected with a base purchase rate of .153%, the effect of advertisements was found in most cases to have a sub 1% effect on purchase likelihood, a rate which would need far more data to properly evidence. This lack of data does not tarnish the entirety of the findings, but at the same time should not be taken lightly when considering the prosect of making real decisions based off of what has been presented. In order to have unwavering confidence in the relationships found, it would be the suggestion of this report to rerun the analysis with more data points.  
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
